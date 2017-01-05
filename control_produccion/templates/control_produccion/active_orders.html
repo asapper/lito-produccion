@@ -16,10 +16,21 @@
 $(document).ready(function () {
     // fill in data in table
     refreshActiveOrders();
+    refreshProcsData();
 });
 
+// interval for updating processes data
+setInterval('refreshProcsData()', 300000); // 5 minutes = 300,000ms
+function refreshProcsData() {
+    $.ajax({
+        async: true,
+        type: "GET",
+        url: "{% url 'control_produccion:refresh_procs_data' %}"
+    });
+}
+
 // interval for updating db
-setInterval('refreshDatabase()', 60000) // 1 minute = 60,000ms
+setInterval('refreshDatabase()', 300000); // 5 minutes = 300,000ms
 function refreshDatabase() {
     $.ajax({
         async: true,
@@ -29,7 +40,7 @@ function refreshDatabase() {
 }
 
 // interval for updating view
-setInterval('refreshActiveOrders()', 60000) // 1 minute = 60,000ms
+setInterval('refreshActiveOrders()', 300000); // 5 minutes = 300,000ms
 function refreshActiveOrders() {
     $.ajax({
         async: true,

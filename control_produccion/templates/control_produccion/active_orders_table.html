@@ -7,9 +7,8 @@
             <th class="cell-rotate cell-client"><div>Cliente</div></th>
             <th class="cell-rotate cell-description"><div>Trabajo</div></th>
             <th class="cell-rotate cell-due-date"><div>Fecha de Entrega</div></th>
-            <th class="cell-rotate cell-machine"><div>Máquina</div></th>
-            {% for process in process_list %}
-            <th class="cell-rotate cell-process"><div>{{ process }}</div></th>
+            {% for group in group_list %}
+            <th class="cell-rotate cell-process"><div>{{ group }}</div></th>
             {% endfor %}
         </tr>
     </thead>
@@ -28,20 +27,16 @@
                 class="label label-success">Futuro
                 {% endif %}
                 </span></h5></td>
-            <td class="cell-machine">{{ order.order_machine }}</td>
-            {% for process in process_list %}
-                {% get_process_in_order order process as process_in_order %}
-                {% if process_in_order %}
-                    {% if not process_in_order.get_is_started %}
+            {% for group in group_list %}
+                {% get_order_group_in_order order group as order_group_in_order %}
+                {% if order_group_in_order %}
+                    {% if not order_group_in_order.get_is_started %}
                     <td class="cell-danger cell-process"><i class="fa fa-times fa-fw" aria-hidden="true"></i></td>
-                    {% elif process_in_order.get_is_started and not process_in_order.get_is_finished and not process_in_order.get_is_paused %}
+                    {% elif order_group_in_order.get_is_started and not order_group_in_order.get_is_finished %}
                     <td class="cell-warning cell-process"><i class="fa fa-refresh fa-spin fa-fw" aria-hidden="true"></i></td>
-                    {% elif process_in_order.get_is_paused %}
-                    <td class="cell-default cell-process"><i class="fa fa-pause fa-fw" aria-hidden="true"></i></td>
-                    {% elif process_in_order.get_is_finished %}
+                    {% elif order_group_in_order.get_is_finished %}
                     <td class="cell-success cell-process"><i class="fa fa-check fa-fw" aria-hidden="true"></i></td>
                     {% endif %}
-                    
                 {% else %}
                 <td></td>
                 {% endif %}

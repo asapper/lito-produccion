@@ -2,99 +2,15 @@
 {% load humanize %}
 
 {% block header %}
-<!-- Nav tabs -->
-<ul class="nav nav-pills pull-right" role="tablist">
-    <li role="presentation" class="active"><a href="#processesAnalytics" aria-controls="processesAnalytics" role="tab" data-toggle="tab">Procesos</a></li>
-    <li role="presentation"><a href="#machinesAnalytics" aria-controls="machinesAnalytics" role="tab" data-toggle="tab">Máquinas</a></li>
-    <li role="presentation"><a href="#clientsAnalytics" aria-controls="clientsAnalytics" role="tab" data-toggle="tab">Clientes</a></li>
-    <li role="presentation"><a href="#workersAnalytics" aria-controls="workersAnalytics" role="tab" data-toggle="tab">Trabajadores</a></li>
-</ul>
 <h1>Analytics</h1>
 {% endblock %}
 
 {% block content %}
 <!-- Analytics content -->
 <div class="row">
-    <!-- Tab contents -->
-    <div class="tab-content">
-        <!-- Machines analytics -->
-        <div role="tabpanel" class="row tab-pane fade" id="machinesAnalytics">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="header">
-                        Pliegos impresos por máquina
-                    </div>
-                    <div class="content">
-                        <div class="row">
-                            <h6>En la última semana</h6>
-                            <div class="table-responsive">
-                                <table class="table table-analytics">
-                                    <thead>
-                                        <tr>
-                                            <th>Máquina</th>
-                                            <th>Pliegos impresos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for order in view.get_last_week_sheets_printed %}
-                                        <tr>
-                                            <td>{{ order.order_machine }}</td>
-                                            <td>{{ order.order_total_sheets__sum|intcomma }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <h6>En el último mes</h6>
-                            <div class="table-responsive">
-                                <table class="table table-analytics">
-                                    <thead>
-                                        <tr>
-                                            <th>Máquina</th>
-                                            <th>Pliegos impresos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for order in view.get_last_month_sheets_printed %}
-                                        <tr>
-                                            <td>{{ order.order_machine }}</td>
-                                            <td>{{ order.order_total_sheets__sum|intcomma }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <h6>En general</h6>
-                            <div class="table-responsive">
-                                <table class="table table-analytics">
-                                    <thead>
-                                        <tr>
-                                            <th>Máquina</th>
-                                            <th>Pliegos impresos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for order in view.get_general_sheets_printed %}
-                                        <tr>
-                                            <td>{{ order.order_machine }}</td>
-                                            <td>{{ order.order_total_sheets__sum|intcomma }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <!-- Clients analytics -->
-        <div role="tabpanel" class="row tab-pane fade" id="clientsAnalytics">
-            <div class="col-md-12">
+        <div id="clientsAnalytics">
+            <div class="col-md-6">
                 <div class="card">
                     <div class="header">
                         Clientes frecuentes
@@ -167,71 +83,8 @@
                 </div>
             </div>
         </div>
-        <!-- Workers Analytics -->
-        <div role="tabpanel" class="row tab-pane fade" id="workersAnalytics">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="header">
-                        Trabajadores
-                    </div>
-                    <div class="content">
-                        {% for worker_proc in view.get_workers_times %}
-                        <div class="row">
-                            <h6>{{ worker_proc.0 }}</h6>
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 50%;">Proceso</th>
-                                            <th style="width: 50%;">Minutos por unidad</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for proc, time_per_unit in worker_proc.1 %}
-                                        <tr>
-                                            <td>{{ proc }}</td>
-                                            <td>{{ time_per_unit|floatformat:2 }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div><!-- /.row -->
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
         <!-- Processes analytics -->
-        <div role="tabpanel" class="row tab-pane fade in active" id="processesAnalytics">
-            <!-- Avg times per process -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="header">
-                        Tiempos promedio por proceso
-                    </div>
-                    <div class="content">
-                        <div class="table-responsive">
-                            <table id="avgProcessTimes" class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Proceso</th>
-                                        <th>Minutos por Unidad</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for process_time in view.get_process_times %}
-                                    <tr>
-                                        <td>{{ process_time.0 }}</td>
-                                        <td>{{ process_time.1|floatformat:2 }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div id="processesAnalytics">
             <!-- Most frequent asked processes -->
             <div class="col-md-6">
                 <div class="card">
@@ -305,35 +158,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Puases per process -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="header">
-                        Pausa promedio por proceso pausado
-                    </div>
-                    <div class="content">
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Proceso</th>
-                                        <th>Minutos en pausa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for process_pause_time in view.get_process_pause_times %}
-                                    <tr>
-                                        <td>{{ process_pause_time.process__process_name }}</td>
-                                        <td>{{ process_pause_time.min_avg_pause|floatformat:0 }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
-    </div>
 </div>
 {% endblock %}

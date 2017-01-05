@@ -1,11 +1,26 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
+from enum import Enum
+
+
+class ProcessState(Enum):
+    """
+    Class used to differentiate process states.
+    Any unique values would work.
+    """
+    NOT_STARTED = 1
+    STARTED = 2
+    FINISHED = 3
 
 
 class Process(models.Model):
+    # sunhive id
+    process_sh_id = models.PositiveSmallIntegerField()
+    # group id
+    group_sh_id = models.PositiveSmallIntegerField()
     # name
-    process_name = models.CharField(max_length=100)
+    process_name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         """Return a string representation of this Process."""
@@ -16,21 +31,38 @@ class Process(models.Model):
         return self.process_name
 
 
+class Group(models.Model):
+    # group id
+    group_sh_id = models.PositiveSmallIntegerField(primary_key=True)
+    # group name
+    group_name = models.CharField(max_length=50)
+
+    def __str__(self):
+        """Return a string representation of this Process Group."""
+        return self.group_name
+
+
 class Order(models.Model):
+    # sunhive id
+    order_sh_id = models.PositiveSmallIntegerField()
     # OP number
-    order_op_number = models.CharField(max_length=10, unique=True)
+    order_op_number = models.CharField(max_length=10)
     # client
     order_client = models.CharField(max_length=255)
     # material description
     order_description = models.CharField(max_length=100)
-    # printing machine selected
-    order_machine = models.CharField(max_length=50)
+    # order product number
+    order_product_number = models.CharField(max_length=5)
+    # order product name
+    order_product_name = models.CharField(max_length=100)
     # quantity
     order_quantity = models.PositiveIntegerField()
     # total sheets
     order_total_sheets = models.PositiveSmallIntegerField()
     # processes
     processes = models.ManyToManyField(Process, through="Order_Process")
+    # groups
+    groups = models.ManyToManyField(Group, through="Order_Group")
     # is finished?
     order_is_finished = models.BooleanField(default=False)
     # due date
@@ -45,12 +77,26 @@ class Order(models.Model):
             self.order_client,
             self.order_description)
 
+    def get_op_product_number(self):
+        """Return OP number plus product number appended."""
+        return "{}-{}".format(
+            self.order_op_number,
+            self.order_product_number)
+
     def get_op_number(self):
         """Return OP number."""
         return self.order_op_number
 
+    def get_product_number(self):
+        """Return product number."""
+        return self.order_product_number
+
+    def get_groups(self):
+        """Return this Order's groups."""
+        return self.groups.all()
+
     def get_processes(self):
-        """Returns this Order's processes."""
+        """Return this Order's processes."""
         return self.processes.all()
 
     def get_is_finished(self):
@@ -63,7 +109,7 @@ class Order(models.Model):
         self.save()
 
     def get_quantity(self):
-        """Returns this Order's quantity."""
+        """Return this Order's quantity."""
         return self.order_quantity
 
     def is_past_due(self):
@@ -76,6 +122,48 @@ class Order(models.Model):
         """Return True if order is due today, return False otherwise."""
         return self.order_due_date.date() == timezone.now().date()
 
+ 
+class Order_Group(models.Model):
+    # orders
+    order = models.ForeignKey(Order)
+    # group
+    group = models.ForeignKey(
+        Group, to_field='group_sh_id')
+
+    def get_is_started(self):
+        """
+        Return True if any of the Processes associated with
+        this Group are started.
+        """
+        # get processes associated with order
+        processes = self.order.processes.filter(
+            group_sh_id=self.group.group_sh_id)
+        order = self.order
+        # verify if any of the processes is started
+        for process in processes:
+            o_proc = Order_Process.objects.get(
+                order=order, process=process)
+            if o_proc.get_is_started() is True:
+                return True
+        return False
+
+    def get_is_finished(self):
+        """
+        Return False if any of the Processes associated with
+        this Group are not finished.
+        """
+        # get processes associated with order
+        processes = self.order.processes.filter(
+            group_sh_id=self.group.group_sh_id)
+        order = self.order
+        # verify if any of the processes is not finished
+        for process in processes:
+            o_proc = Order_Process.objects.get(
+                order=order, process=process)
+            if o_proc.get_is_finished() is False:
+                return False
+        return True
+
 
 class Order_Process(models.Model):
     # order reference
@@ -84,35 +172,15 @@ class Order_Process(models.Model):
     process = models.ForeignKey(Process)
     # is started?
     order_process_is_started = models.BooleanField(default=False)
-    # datetime started
-    order_process_datetime_started = models.DateTimeField(null=True)
-    # user that started this Order_Process
-    order_process_user_started = models.ForeignKey(
-        User, related_name='order_processes_started', null=True)
     # is finished?
     order_process_is_finished = models.BooleanField(default=False)
-    # datetime finished
-    order_process_datetime_finished = models.DateTimeField(null=True)
-    # user that finished this Order_Process
-    order_process_user_finished = models.ForeignKey(
-        User, related_name='order_processes_finished', null=True)
-    # datetime process was paused
-    order_process_datetime_pause_start = models.DateTimeField(null=True)
-    # is paused?
-    order_process_is_paused = models.BooleanField(default=False)
-    # total seconds paused
-    order_process_seconds_paused = models.PositiveIntegerField(default=0)
 
     def get_op_number(self):
         """Return OP number of associated order."""
-        return self.order.get_op_number()
-
-    def get_datetime_started(self):
-        """Return the datetime this Order_Process was started."""
-        return self.order_process_datetime_started
+        return self.order.get_op_process_number()
 
     def get_is_started(self):
-        """Returns True if this Process is started, False otherwise."""
+        """Return True if this Process is started, False otherwise."""
         return self.order_process_is_started
 
     def set_started(self):
@@ -120,16 +188,11 @@ class Order_Process(models.Model):
         Assign this Process as started by setting
         its start datetime to timezone.now.
         """
-        self.order_process_datetime_started = timezone.now()
         self.order_process_is_started = True
         self.save()
 
-    def get_datetime_finished(self):
-        """Return the datetime this Order_Process was finished."""
-        return self.order_process_datetime_finished
-
     def get_is_finished(self):
-        """Returns True if this Process is finished, False otherwise."""
+        """Return True if this Process is finished, False otherwise."""
         return self.order_process_is_finished
 
     def set_finished(self):
@@ -137,73 +200,13 @@ class Order_Process(models.Model):
         Assign this Process as finished by setting
         its start datetime to timezone.now.
         """
-        self.order_process_datetime_finished = timezone.now()
         self.order_process_is_finished = True
         self.save()
 
-    def get_is_paused(self):
-        """Return the value of is_paused."""
-        return self.order_process_is_paused
-
-    def set_paused(self):
-        """
-        Set is_paued to True, and assign pause_start time to timezone.now.
-        """
-        self.order_process_datetime_pause_start = timezone.now()
-        self.order_process_is_paused = True
-        self.save()
-
-    def set_resumed(self):
-        """
-        Set is_paused to False, and increment seconds_paused by
-        timezone.now() - datetime_pause_start. Set pause_start to None.
-        """
-        diff = timezone.now() - self.order_process_datetime_pause_start
-        self.order_process_seconds_paused += diff.total_seconds()
-        self.order_process_datetime_pause_start = None
-        self.order_process_is_paused = False
-        self.save()
-
-    def get_duration(self):
-        """Returns the time (in seconds) it took to finish Process."""
-        diff = (self.order_process_datetime_finished - 
-                self.order_process_datetime_started)
-        return diff.total_seconds() - self.order_process_seconds_paused
-
     def get_order_quantity(self):
-        """Returns the quantity stored in associated Order."""
+        """Return the quantity stored in associated Order."""
         return self.order.get_quantity()
 
     def get_process_name(self):
         """Return the name of the associated Process."""
         return self.process.get_name()
-
-    def get_user_who_started_process(self):
-        """Return the user who started this Order_Process."""
-        return self.order_process_user_started
-
-    def get_user_short_name_who_started_process(self):
-        """
-        Return the short name of the user who started this Order_Process.
-        """
-        return self.order_process_user_started.get_short_name()
-
-    def set_user_who_started_process(self, user):
-        """Assign the given user to have started this Order_Process."""
-        self.order_process_user_started = user
-        self.save()
-
-    def get_user_who_finished_process(self):
-        """Return the user who finished this Order_Process."""
-        return self.order_process_user_finished
-
-    def get_user_short_name_who_finished_process(self):
-        """
-        Return the short name of the user who finished this Order_Process.
-        """
-        return self.order_process_user_finished.get_short_name()
-
-    def set_user_who_finished_process(self, user):
-        """Assign given user to have finished this Process."""
-        self.order_process_user_finished = user
-        self.save()

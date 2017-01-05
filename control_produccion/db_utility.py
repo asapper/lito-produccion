@@ -1,6 +1,10 @@
+import datetime
 import psycopg2
 
 from django.db import DatabaseError
+from django.utils import timezone
+
+from .models import ProcessState
 
 
 # constants
@@ -8,195 +12,159 @@ VAL_INDEX = 0
 VAL_VALUE = 1
 
 # indeces of rows read
-INDEX_CLIENT = 0
-INDEX_OP_NUMBER = 1
-INDEX_QUANTITY = 2
-INDEX_SHEETS = 3
-INDEX_MACHINE = 4
-INDEX_DESCRIPTION = 5
-INDEX_IMPRESION_T = 6
-INDEX_IMPRESION_TR = 7
-INDEX_BARNIZ_T = 8
-INDEX_BARNIZ_TR = 9
-INDEX_SIZADO = 10
-INDEX_PERFORADO = 11
-INDEX_TROQUELADO = 12
-INDEX_DOBLADO = 13
-INDEX_ESPIRAL = 14
-INDEX_PEGADO = 15
-INDEX_DESPUNTADO = 16
-INDEX_BLOCADO = 17
-INDEX_EMPALMADO = 18
-INDEX_OJETEADO = 19
-INDEX_SENSE_T = 20
-INDEX_SENSE_TR = 21
-INDEX_PLASTICO_T = 22
-INDEX_PLASTICO_TR = 23
-INDEX_PLASTICO_MATE = 24
-INDEX_PLASTICO_BRILLANTE = 25
-INDEX_FOIL_T = 26
-INDEX_FOIL_TR = 27
-INDEX_LOMO = 28
-INDEX_GRAPA = 29
-INDEX_CORTE = 30
-INDEX_DUE_DATE = 31
-INDEX_DATE_CREATED = 32
+INDEX_ORDER_DB_ID = 0
+INDEX_PRODUCT_ID = 1
+INDEX_PROCESS_GROUP = 2
+INDEX_PROCESS_ID = 3
+INDEX_PROCESS_NAME = 4
+INDEX_CLIENT = 5
+INDEX_OP_NUMBER = 6
+INDEX_QUANTITY = 7
+INDEX_SHEETS = 8
+INDEX_DESCRIPTION = 9
+INDEX_PRODUCT_NAME = 10
+INDEX_DATE_CREATED = 11
+INDEX_DUE_DATE = 12
 
-# values for stored indices
-VALUE_PROCESSES = 'processes'
+# values of stored indices
+VALUE_ORDER_DB_ID = 'order_db_id'
+VALUE_PRODUCT_ID = 'product_id'
+VALUE_PROCESS_GROUP = 'process_group'
+VALUE_PROCESS_ID = 'process_id'
+VALUE_PROCESS_NAME = 'process_name'
 VALUE_CLIENT = 'client'
 VALUE_OP_NUMBER = 'op_number'
 VALUE_QUANTITY = 'quantity'
 VALUE_SHEETS = 'sheets'
-VALUE_MACHINE = 'machine'
 VALUE_DESCRIPTION = 'description'
-VALUE_IMPRESION_T = 'Impresión Tiro'
-VALUE_IMPRESION_TR = 'Impresión Tiro/Retiro'
-VALUE_BARNIZ_T = 'Barniz Tiro'
-VALUE_BARNIZ_TR = 'Barniz Tiro/Retiro'
-VALUE_SIZADO = 'Sizado'
-VALUE_PERFORADO = 'Perforado'
-VALUE_TROQUELADO = 'Troquelado'
-VALUE_DOBLADO = 'Doblado'
-VALUE_ESPIRAL = 'Espiral'
-VALUE_PEGADO = 'Pegado'
-VALUE_DESPUNTADO = 'Despuntado'
-VALUE_BLOCADO = 'Blocado'
-VALUE_EMPALMADO = 'Empalmado'
-VALUE_OJETEADO = 'Ojeteado'
-VALUE_SENSE_T = 'Sense Tiro'
-VALUE_SENSE_TR = 'Sense Tiro/Retiro'
-VALUE_PLASTICO_T = 'Plástico Tiro'
-VALUE_PLASTICO_TR = 'Plástico Tiro/Retiro'
-VALUE_PLASTICO_MATE = 'Plástico Mate'
-VALUE_PLASTICO_BRILLANTE = 'Plástico Brillante'
-VALUE_FOIL_T = 'Foil Tiro'
-VALUE_FOIL_TR = 'Foil Tiro/Retiro'
-VALUE_LOMO = 'Lomo'
-VALUE_GRAPA = 'Grapa'
-VALUE_CORTE = 'Corte'
-VALUE_DUE_DATE = 'Fecha Entrega'
-VALUE_DATE_CREATED = 'Fecha Creada'
+VALUE_PRODUCT_NAME = 'product'
+VALUE_DATE_CREATED = 'date_created'
+VALUE_DUE_DATE = 'due_date'
 
 # list of tuples of index, name-of-field
 INDICES = [
-    (INDEX_CLIENT, VALUE_CLIENT),  # index 0
-    (INDEX_OP_NUMBER, VALUE_OP_NUMBER),  # index 1
-    (INDEX_QUANTITY, VALUE_QUANTITY),  # index 2
-    (INDEX_SHEETS, VALUE_SHEETS),  # index 3
-    (INDEX_MACHINE, VALUE_MACHINE),  # index 4
-    (INDEX_DESCRIPTION, VALUE_DESCRIPTION),  # index 5
-    (INDEX_IMPRESION_T, VALUE_IMPRESION_T),  # index 6
-    (INDEX_IMPRESION_TR, VALUE_IMPRESION_TR),  # index 7
-    (INDEX_BARNIZ_T, VALUE_BARNIZ_T),  # index 8
-    (INDEX_BARNIZ_TR, VALUE_BARNIZ_TR),  # index 9
-    (INDEX_SIZADO, VALUE_SIZADO),  # index 10
-    (INDEX_PERFORADO, VALUE_PERFORADO),  # index 11
-    (INDEX_TROQUELADO, VALUE_TROQUELADO),  # index 12
-    (INDEX_DOBLADO, VALUE_DOBLADO),  # index 13
-    (INDEX_ESPIRAL, VALUE_ESPIRAL),  # index 14
-    (INDEX_PEGADO, VALUE_PEGADO),  # index 15
-    (INDEX_DESPUNTADO, VALUE_DESPUNTADO),  # index 16
-    (INDEX_BLOCADO, VALUE_BLOCADO),  # index 17
-    (INDEX_EMPALMADO, VALUE_EMPALMADO),  # index 18
-    (INDEX_OJETEADO, VALUE_OJETEADO),  # index 19
-    (INDEX_SENSE_T, VALUE_SENSE_T),  # index 20
-    (INDEX_SENSE_TR, VALUE_SENSE_TR),  # index 21
-    (INDEX_PLASTICO_T, VALUE_PLASTICO_T),  # index 22
-    (INDEX_PLASTICO_TR, VALUE_PLASTICO_TR),  # index 23
-    (INDEX_PLASTICO_MATE, VALUE_PLASTICO_MATE),  # index 24
-    (INDEX_PLASTICO_BRILLANTE, VALUE_PLASTICO_BRILLANTE),  # index 25
-    (INDEX_FOIL_T, VALUE_FOIL_T),  # index 26
-    (INDEX_FOIL_TR, VALUE_FOIL_TR),  # index 27
-    (INDEX_LOMO, VALUE_LOMO),  # index 28
-    (INDEX_GRAPA, VALUE_GRAPA),  # index 29
-    (INDEX_CORTE, VALUE_CORTE),  # index 30
-    (INDEX_DUE_DATE, VALUE_DUE_DATE),  # index 31
-    (INDEX_DATE_CREATED, VALUE_DATE_CREATED),  # index 32
+    (INDEX_ORDER_DB_ID, VALUE_ORDER_DB_ID),  # index 0
+    (INDEX_PRODUCT_ID, VALUE_PRODUCT_ID),  # index 1
+    (INDEX_PROCESS_GROUP, VALUE_PROCESS_GROUP),  # index 2
+    (INDEX_PROCESS_ID, VALUE_PROCESS_ID),  # index 3
+    (INDEX_PROCESS_NAME, VALUE_PROCESS_NAME),  # index 4
+    (INDEX_CLIENT, VALUE_CLIENT),  # index 5
+    (INDEX_OP_NUMBER, VALUE_OP_NUMBER),  # index 6
+    (INDEX_QUANTITY, VALUE_QUANTITY),  # index 7
+    (INDEX_SHEETS, VALUE_SHEETS),  # index 8
+    (INDEX_DESCRIPTION, VALUE_DESCRIPTION),  # index 9
+    (INDEX_PRODUCT_NAME, VALUE_PRODUCT_NAME),  # index 10
+    (INDEX_DATE_CREATED, VALUE_DATE_CREATED),  # index 11
+    (INDEX_DUE_DATE, VALUE_DUE_DATE),  # index 12
 ]
-# db information
-DATABASE_NAME = "sunhive"
-USER_NAME = "reportedh"
-PASSWORD = "digitalh16"
-HOST_NAME = "192.168.0.2"
-PORT_NUMBER = "5432"
+
+# db info
+DB_NAME = "sunhive"
+DB_USER = "reportecl"
+DB_PSSWD = "clitografica16"
+DB_HOST = "192.168.0.20"
+DB_PORT = "5432"
+
+# process query
+PROCESS_QUERY = (
+    "select \"FechaInicio\", \"FechaFin\" from "
+    "\"Produccion\".\"Tiempos\" "
+    "where \"CodigoOrdenProduccion\" = {} and "  # Codigo de la orden
+    "\"LineaProducto\" = {} and "  # Linea del producto, si es portada o interiores
+    "\"CodigoProceso\" = {} and "  # Codigo del proceso
+    "\"LineaProcesoOrdenProduccion\"  = {} "  # codigo/linea del subproceso
+    "order by \"FechaInicio\" ")
 
 # main query
-QUERY = (
-    "select op.\"NombreCliente\" as \"Cliente\", op.\"Numero\"||'-'||opp.\"Linea\" as \"Numero\", min(opp.\"Cantidad\") as \"Cantidad\", min(opm.\"NumeroPliegosPrensa\")+ min(opm.\"VentajaPliegosPrensa\") as \"TotalPP\", "
-    "min(mi.\"Descripcion\") as \"MaquinaImpresion\", min(opp.\"DescripcionProducto\") as \"DescripcionMaterial\", "
-    "max(case when cop.\"CodigoProceso\" in (2,6) then 'X' else '' end) as \"ImpresionTiro\", "
-    "max(case when cop.\"CodigoProceso\" in (1,7) then 'X' else '' end) as \"ImpresionTiroRetiro\", "
-    "max(case when cop.\"CodigoProceso\"=3 then 'X' else '' end) as \"BarnizTiro\", "
-    "max(case when cop.\"CodigoProceso\"=4 then 'X' else '' end) as \"BarnizTiroRetiro\", "
-    "max(case when cop.\"CodigoProceso\"=68 then 'X' else '' end) as \"Sizado\", "
-    "max(case when cop.\"CodigoProceso\"=71 then 'X' else '' end) as \"Perforado\", "
-    "max(case when opt.\"CodigoOrdenProduccion\" is not null then 'X' else '' end) as \"Troquelado\", "
-    "max(case when cop.\"CodigoProceso\"=8 then 'X' else '' end) as \"Doblado\", "
-    "max(case when cop.\"CodigoProceso\"=75 then 'X' else '' end) as \"Espiral\", "
-    "max(case when opemp.\"CodigoOrdenProduccion\" is not null then 'X' else '' end) as \"Pegado\", "
-    "max(case when cop.\"CodigoProceso\" in (26,27) then 'X' else '' end) as \"Despuntado\", "
-    "max(case when opblocado.\"CodigoOrdenProduccion\" is not null  then 'X' else '' end) as \"Blocado\", "
-    "max(case when opempalmado.\"CodigoOrdenProduccion\" is not null  then 'X' else '' end) as \"Empalmar\", "
-    "max(case when opojeteado.\"CodigoOrdenProduccion\" is not null  then 'X' else '' end) as \"Ojeteado\", "
-    "max(case when cop.\"CodigoProceso\"=57 then 'X' else '' end) as \"SensefectTiro\", "
-    "max(case when cop.\"CodigoProceso\"=74 then 'X' else '' end) as \"SensefectTiroRetiro\", "
-    "max(case when cop.\"CodigoProceso\" in (12,66,18,16,72,32,53,58,62,64) then 'X' else '' end) as \"PlasticoTiro\", "
-    "max(case when cop.\"CodigoProceso\" in (13,67,19,17,73,33,54,59,63,65) then 'X' else '' end) as \"PlasticoTiroRetiro\", "
-    "max(case when cop.\"CodigoProceso\" in (16,17,32,33,58,59,72,73) then 'X' else '' end) as \"PlasticoMate\", "
-    "max(case when cop.\"CodigoProceso\" in (18,19,12,13,53,54,62,63,64,65,66,67) then 'X' else '' end) as \"PlasticoBrillante\", "
-    "max(case when cop.\"CodigoProceso\" in (39,43,25,35,37,45,41,47) then 'X' else '' end) as \"FoilTiro\", "
-    "max(case when cop.\"CodigoProceso\" in (40,44,34,36,38,46,42,48) then 'X' else '' end) as \"FoilTiroRetiro\", "
-    "max(case when cop.\"CodigoProceso\"=11 then 'X' else '' end) as \"Lomo\", "
-    "max(case when cop.\"CodigoProceso\"=10 then 'X' else '' end) as \"Grapa\", "
-    "max(case when cop.\"CodigoProceso\"=5 then 'X' else '' end) as \"Corte\", "
-    "op.\"FechaRequerida\", "
-    "op.\"FechaCreacion\" "
-    "from \"Produccion\".\"OrdenesProduccion\" op "
+MAIN_QUERY = (
+    "select qr.*, op.\"NombreCliente\", op.\"Numero\", opp.\"Cantidad\", opm.\"NumeroPliegosPrensa\" + opm.\"VentajaPliegosPrensa\" as \"TotalPliegosPrensa\", opp.\"DescripcionProducto\",op.\"Descripcion\", op.\"FechaCreacion\", op.\"FechaRequerida\" "
+    "from ( "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 1 as \"CodigoProceso\", -1 as \"LineaProceso\", 'CORTE INICIAL' AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionCorte\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 1 as \"CodigoProceso\", 0 as \"LineaProceso\", 'CORTE FINAL' AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionCorte\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 2 as \"CodigoProceso\", -1 as \"LineaProceso\", 'OFFSET' as \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionOffset\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 3 as \"CodigoProceso\", -1 as \"LineaProceso\", 'BARNIZADO' AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionBarniz\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 4 as \"CodigoProceso\", \"LineaTipografia\" as \"LineaProceso\", mt.\"Descripcion\" AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionTipografia\" opt "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opt.\"CodigoOrdenProduccion\" "
+    "INNER JOIN \"Cotizaciones\".\"MaquinasTipografia\" mt on "
+    "mt.\"Codigo\"=opt.\"CodigoMaquinaTipografia\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 5 as \"CodigoProceso\", -1 as \"LineaProceso\", 'DOBLADO' AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionDoblado\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 6 as \"CodigoProceso\", -1 as \"LineaProceso\", 'COMPAGINADO' AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionCompaginado\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}' "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 7 as \"CodigoProceso\", \"LineaEmpaque\" as \"LineaProceso\", pe.\"Descripcion\" AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionEmpaque\" ope "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=ope.\"CodigoOrdenProduccion\" "
+    "INNER JOIN \"Cotizaciones\".\"ProcesosEmpaque\" pe on "
+    "pe.\"Codigo\"=ope.\"CodigoProcesoEmpaque\" "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}'  "
+    "union "
+    "select \"CodigoOrdenProduccion\", \"Linea\" as \"LineaProducto\", 8 as \"CodigoProceso\", \"LineaProceso\" as \"LineaProceso\", opo.\"Descripcion\" AS \"Proceso\" "
+    "from \"Produccion\".\"OrdenesProduccionOtrosProcesos\" opo "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=opo.\"CodigoOrdenProduccion\"  "
+    "where  "
+    "op.\"Estado\" in ('P','R') "
+    "and op.\"FechaCreacion\" > '{0}'  "
+    ") qr "
+    "inner join \"Produccion\".\"OrdenesProduccion\" op on "
+    "op.\"Codigo\"=qr.\"CodigoOrdenProduccion\" "
     "inner join \"Produccion\".\"OrdenesProduccionProductos\" opp on "
-    "op.\"Codigo\"=opp.\"CodigoOrdenProduccion\" "
+    "opp.\"CodigoOrdenProduccion\"=op.\"Codigo\" and  "
+    "opp.\"Linea\" = qr.\"LineaProducto\" "
     "inner join \"Produccion\".\"OrdenesProduccionMateriales\" opm on "
     "op.\"Codigo\" = opm.\"CodigoOrdenProduccion\" and "
-    "opm.\"Linea\" = opp.\"Linea\" "
-    "inner join \"Produccion\".\"OrdenesProduccionOffset\" opo on "
-    "op.\"Codigo\" = opo.\"CodigoOrdenProduccion\" and "
-    "opo.\"Linea\" = opp.\"Linea\" "
-    "inner join \"Cotizaciones\".\"MaquinasImpresion\" mi on "
-    "opo.\"CodigoMaquinaImpresion\" = mi.\"Codigo\" "
-    "inner join \"Cotizaciones\".\"MaterialesImpresion\" mti on "
-    "mti.\"Codigo\" = opm.\"CodigoMaterial\" "
-    "left outer join \"Produccion\".\"OrdenesProduccionOtrosProcesos\" ope on "
-    "op.\"Codigo\"=ope.\"CodigoOrdenProduccion\" "
-    "and ope.\"Linea\" = opp.\"Linea\" "
-    "left outer join \"Cotizaciones\".\"CotizacionesProductosOtrosProcesos\" cop on "
-    "cop.\"CodigoCotizacion\"=op.\"CodigoCotizacion\" and "
-    "cop.\"LineaProducto\"=ope.\"Linea\"-1 and "
-    "cop.\"LineaProceso\"=ope.\"LineaProceso\" and "
-    "cop.\"LineaCantidad\"=op.\"LineaCantidad\"  "
-    "left outer join \"Produccion\".\"OrdenesProduccionTipografia\" opt on "
-    "op.\"Codigo\"=opt.\"CodigoOrdenProduccion\" "
-    "and opt.\"Linea\" = opp.\"Linea\" "
-    "and \"CodigoTipoTipografia\"=1 "
-    "left outer join \"Produccion\".\"OrdenesProduccionEmpaque\" opemp on "
-    "op.\"Codigo\"=opemp.\"CodigoOrdenProduccion\" "
-    "and opemp.\"Linea\" = opp.\"Linea\" "
-    "and opemp.\"CodigoProcesoEmpaque\" in (1,2) "
-    "left outer join \"Produccion\".\"OrdenesProduccionEmpaque\" opblocado on "
-    "op.\"Codigo\"=opblocado.\"CodigoOrdenProduccion\" "
-    "and opblocado.\"Linea\" = opp.\"Linea\" "
-    "and opblocado.\"CodigoProcesoEmpaque\" in (9) "
-    "left outer join \"Produccion\".\"OrdenesProduccionEmpaque\" opempalmado on "
-    "op.\"Codigo\"=opempalmado.\"CodigoOrdenProduccion\" "
-    "and opempalmado.\"Linea\" = opp.\"Linea\" "
-    "and opempalmado.\"CodigoProcesoEmpaque\" in (4) "
-    "left outer join \"Produccion\".\"OrdenesProduccionEmpaque\" opojeteado on "
-    "op.\"Codigo\"=opojeteado.\"CodigoOrdenProduccion\" "
-    "and opojeteado.\"Linea\" = opp.\"Linea\" "
-    "and opojeteado.\"CodigoProcesoEmpaque\" in (15) "
-    "where "
-    "op.\"Estado\" in ('P','R') "
-    "and op.\"FechaCreacion\" > '20151001' "
-    "group by op.\"Codigo\",opp.\"Linea\" ")
+    "opm.\"Linea\" = qr.\"LineaProducto\" "
+    "where   op.\"Estado\" in ('P','R') "
+    "order by \"CodigoOrdenProduccion\", \"LineaProducto\", \"CodigoProceso\", \"LineaProceso\" ")
 
 
 class DatabaseController():
@@ -207,8 +175,26 @@ class DatabaseController():
         Return cleaned data.
         """
         cursor = cls.init_db()
-        data = cls.execute_query(cursor)
+        # get last month date in YYYYMMDD format
+        last_month = timezone.now() - datetime.timedelta(days=31)
+        last_month = last_month.strftime('%Y%m%d')
+        # call helper function to execute query
+        data = cls.execute_main_query(cursor, last_month)
+        # return clean data
         return cls.clean_data(data)
+
+    @classmethod
+    def get_process_data(cls, op, product, group, process):
+        """
+        Connect to database and retrieve specific information about
+        a process of the given Order.
+        """
+        cursor = cls.init_db()
+        # call helper function to execute query
+        data = cls.execute_process_query(
+            cursor, op, product, group, process)
+        return data
+
 
     @classmethod
     def init_db(cls):
@@ -216,11 +202,11 @@ class DatabaseController():
         try:
             # establish connection
             conn = psycopg2.connect(
-                database=DATABASE_NAME,
-                user=USER_NAME,
-                password=PASSWORD,
-                host=HOST_NAME,
-                port=PORT_NUMBER)
+                database=DB_NAME,
+                user=DB_USER,
+                password=DB_PSSWD,
+                host=DB_HOST,
+                port=DB_PORT)
             # get cursors
             cur = conn.cursor()
             return cur
@@ -228,50 +214,64 @@ class DatabaseController():
             raise DatabaseError
 
     @classmethod
-    def execute_query(cls, cursor):
+    def execute_main_query(cls, cursor, limit_date):
         """Execute query to retrieve active orders from database."""
         # run main first query
-        cursor.execute(QUERY)
+        cursor.execute(MAIN_QUERY.format(limit_date))
         return cursor.fetchall()
 
     @classmethod
+    def execute_process_query(cls, cursor, op, product, group, process):
+        """
+        Execute query to retrieve data about an
+        Order's specific process.
+        """
+        # run process query
+        cursor.execute(PROCESS_QUERY.format(
+            op, product, group, process))
+        rows = cursor.fetchall()
+        # store state process
+        state = ProcessState.NOT_STARTED
+        if not rows:  # no times entered for process
+            state = ProcessState.NOT_STARTED
+        else:  # there are time entries
+            for row in rows:
+                if len(row) == 1:  # process being done
+                    # if at least one entry indicates process not done
+                    # there is no need to keep looking
+                    state = ProcessState.STARTED
+                    print("######## Process started: {}".format(op))
+                    break
+                elif len(row) == 2:  # process finished
+                    # this entry indicates one finished cycle
+                    # of work done on process, other cycle(s)
+                    # could still have happened, so keep looking
+                    state = ProcessState.FINISHED
+                    print("######## Process finished: {}".format(op))
+        # return state of given process
+        return state
+
+    @classmethod
     def clean_data(cls, data):
-        """Clean given data. Return list OP numbers and cleaned data."""
+        """Clean given data. Return cleaned data."""
         orders = []  # store all orders
-        op_numbers = []  # store all OP numbers
         for row in data:
-            # store op_number, client, description, machine, quantity, sheets
+            # store all data
             order_dict = {}
+            order_dict[VALUE_ORDER_DB_ID] = row[INDEX_ORDER_DB_ID]
+            order_dict[VALUE_PRODUCT_ID] = row[INDEX_PRODUCT_ID]
+            order_dict[VALUE_PROCESS_GROUP] = row[INDEX_PROCESS_GROUP]
+            order_dict[VALUE_PROCESS_ID] = row[INDEX_PROCESS_ID]
+            order_dict[VALUE_PROCESS_NAME] = row[INDEX_PROCESS_NAME]
             order_dict[VALUE_CLIENT] = row[INDEX_CLIENT]
             order_dict[VALUE_OP_NUMBER] = row[INDEX_OP_NUMBER]
             order_dict[VALUE_QUANTITY] = row[INDEX_QUANTITY]
             order_dict[VALUE_SHEETS] = row[INDEX_SHEETS]
-            order_dict[VALUE_MACHINE] = row[INDEX_MACHINE]
             order_dict[VALUE_DESCRIPTION] = row[INDEX_DESCRIPTION]
-            order_dict[VALUE_DUE_DATE] = row[INDEX_DUE_DATE]
+            order_dict[VALUE_PRODUCT_NAME] = row[INDEX_PRODUCT_NAME]
             order_dict[VALUE_DATE_CREATED] = row[INDEX_DATE_CREATED]
-            # store OP number
-            op_numbers.append(row[INDEX_OP_NUMBER])
-            processes = []  # store processes
-            plastico = ""  # format process Plastico
-            for index, item in enumerate(row):
-                if item == 'X':
-                    if index == INDEX_PLASTICO_T:
-                        plastico = "Tiro"
-                    elif index == INDEX_PLASTICO_TR:
-                        plastico = "Tiro/Retiro"
-                    elif (index == INDEX_PLASTICO_MATE or
-                            index == INDEX_PLASTICO_BRILLANTE):
-                        # add plastico
-                        processes.append("{} {}".format(
-                            INDICES[index][VAL_VALUE], plastico))
-                    else:  # not plastico(s)
-                        # add process
-                        processes.append("{}".format(
-                            INDICES[index][VAL_VALUE]))
-            # store processes in dict
-            order_dict[VALUE_PROCESSES] = processes
+            order_dict[VALUE_DUE_DATE] = row[INDEX_DUE_DATE]
             # add dict to list of orders
             orders.append(order_dict)
         # return list of all info from given data
-        return op_numbers, orders
+        return orders

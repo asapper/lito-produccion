@@ -108,6 +108,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'es_GT'
 
+DEFAULT_CHARSET = 'utf-8'
+
 TIME_ZONE = 'America/Guatemala'
 
 USE_I18N = True
