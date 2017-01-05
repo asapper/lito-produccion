@@ -1,10 +1,10 @@
 # Control de Producción
-This Django prototype was developed for a printing company in Guatemala City, Guatemala called [Corporación Litográfica](http://www.corporacionlitografica.com/). This project was adapted from another project I developed a while back, which you can find over [here](https://github.com/asapper/control_produccion).
+This Django prototype was developed for a printing company in Guatemala City, Guatemala called [Corporación Litográfica](http://www.corporacionlitografica.com/){:target="_blank"}. This project was adapted from another project I developed a while back, which you can find over [here](https://github.com/asapper/control_produccion){:target="_blank"}.
 
 ## License
 MIT License
 
-Copyright (c) 2016 Andy Sapper
+Copyright (c) 2017 Andy Sapper
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
